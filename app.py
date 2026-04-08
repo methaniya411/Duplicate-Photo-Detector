@@ -530,19 +530,6 @@ def api_browse():
     return jsonify({"dirs": entries, "current": path})
 
 
-@app.route("/api/browse-dialog", methods=["GET"])
-def api_browse_dialog():
-    import tkinter as tk
-    from tkinter import filedialog
-    # We must create a new tk root, hide it, and force it to the front
-    root = tk.Tk()
-    root.withdraw()
-    root.attributes("-topmost", True)
-    folder_path = filedialog.askdirectory(parent=root, title="Select Folder to Scan")
-    root.destroy()
-    return jsonify({"path": folder_path})
-
-
 def main():
     parser = argparse.ArgumentParser(description="Duplicate Photo Detector - Web UI")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 5000)), help="Port to run on")

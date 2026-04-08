@@ -59,51 +59,36 @@
 
         header p { color: var(--text-dim); font-size: 0.85rem; }
 
-        /* Path Input Section */
-        .path-section {
-            margin-bottom: 20px;
-        }
+        .upload-section { margin-bottom: 20px; }
 
-        .path-input-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 8px;
-        }
-
-        .path-input {
-            flex: 1;
-            padding: 14px 16px;
+        .upload-btn {
+            width: 100%;
+            padding: 24px;
             background: var(--surface);
-            border: 2px solid var(--border);
+            border: 2px dashed var(--accent);
             border-radius: var(--radius);
-            color: var(--text);
-            font-size: 1rem;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .path-input:focus {
-            border-color: var(--accent);
-        }
-
-        .path-input::placeholder {
-            color: var(--text-dim);
-        }
-
-        .browse-btn {
-            padding: 14px 20px;
-            background: var(--accent);
-            border: none;
-            border-radius: var(--radius);
-            color: white;
-            font-size: 0.9rem;
+            color: var(--accent);
+            font-size: 1.1rem;
             font-weight: 600;
             cursor: pointer;
-            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
             transition: all 0.2s;
         }
 
-        .browse-btn:hover { background: var(--accent-hover); }
+        .upload-btn:hover { background: rgba(108, 92, 231, 0.08); }
+        .upload-btn:active { background: rgba(108, 92, 231, 0.1); transform: scale(0.98); }
+
+        .upload-info {
+            text-align: center;
+            padding: 12px;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        .upload-info.has-files { color: var(--success); }
 
         .path-hint {
             font-size: 0.8rem;
@@ -112,31 +97,6 @@
         }
 
         .path-hint b { color: var(--text); }
-
-        /* Quick Paths */
-        .quick-paths {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 10px;
-        }
-
-        .quick-path-btn {
-            padding: 8px 14px;
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text-dim);
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .quick-path-btn:hover {
-            color: var(--text);
-            border-color: var(--accent);
-            background: rgba(108, 92, 231, 0.1);
-        }
 
         /* Settings */
         .settings-grid {
@@ -491,19 +451,23 @@
             <p>Find and remove duplicate photos from your folders</p>
         </header>
 
-        <!-- LOCAL FOLDER PATH (primary flow — scans real files) -->
-        <section class="path-section">
-            <div class="path-input-group">
-                <input type="text" class="path-input" id="folderPath"
-                       placeholder="Paste folder path, e.g. D:\Photos\Vacation"
-                       onkeydown="if(event.key==='Enter') startScan()">
-                <button class="browse-btn" onclick="browseFolder()">&#128194; Browse</button>
+        <!-- CLOUD UPLOAD FLOW (Works on Mobile/Web) -->
+        <section class="upload-section">
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <button class="upload-btn" id="folderBtn" onclick="selectFolder()" style="flex:1; padding: 16px; font-size: 1rem;">
+                    &#128194; Select Folder
+                </button>
+                <button class="upload-btn" id="photosBtn" onclick="selectPhotos()" style="flex:1; padding: 16px; font-size: 1rem;">
+                    &#128247; Select Photos
+                </button>
             </div>
-            <div class="path-hint">
-                Paste the <b>full path</b> to the folder containing your photos. The scanner reads files directly — deletions remove the <b>actual files</b>.
+            <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;" onchange="handleFolderSelect(this.files)">
+            <input type="file" id="photoInput" multiple accept="image/*" style="display:none;" onchange="handlePhotoSelect(this.files)">
+            <div class="upload-info" id="uploadInfo">
+                <span id="selectedCount">No photos or folder selected</span>
             </div>
-            <div class="quick-paths" id="quickPaths">
-                <!-- Filled dynamically -->
+            <div class="path-hint" style="margin-top: 8px; text-align: center;">
+                <b>Note:</b> You are using the Web interface. Files will be temporarily uploaded for scanning. Deletion only removes the uploaded copies, not the originals on your device.
             </div>
         </section>
 
@@ -603,70 +567,66 @@
             return str.charAt(0).toUpperCase() + str.slice(1);
         }
 
-        // ── Load quick paths on startup ──
-        async function loadQuickPaths() {
-            try {
-                const resp = await fetch('/api/browse', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: '' })
-                });
-                const data = await resp.json();
-                if (data.dirs && data.dirs.length > 0) {
-                    const container = document.getElementById('quickPaths');
-                    // data.dirs can be array of strings or objects
-                    data.dirs.forEach(d => {
-                        const path = typeof d === 'string' ? d : d.path;
-                        const name = typeof d === 'string' ? d.split(/[\\/]/).pop() : d.name;
-                        const btn = document.createElement('button');
-                        btn.className = 'quick-path-btn';
-                        btn.textContent = '📁 ' + name;
-                        btn.onclick = () => {
-                            document.getElementById('folderPath').value = path;
-                            showToast('Path set: ' + path, 'success');
-                        };
-                        container.appendChild(btn);
-                    });
-                }
-            } catch (e) {
-                // Ignore — not critical
-            }
+        // ── Accepted image types ──
+        const IMAGE_EXTENSIONS = new Set([
+            '.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif'
+        ]);
+
+        let selectedFiles = [];
+
+        function isImageFile(file) {
+            const name = file.name || '';
+            const ext = '.' + name.split('.').pop().toLowerCase();
+            if (IMAGE_EXTENSIONS.has(ext)) return true;
+            if (file.type && file.type.startsWith('image/')) return true;
+            return false;
         }
-        loadQuickPaths();
 
-        // ── Browse (Native OS Folder Picker via Python Backend) ──
-        async function browseFolder() {
-            try {
-                // Show loading state on button
-                const btn = document.querySelector('.browse-btn');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<span>&#9203;</span> Waiting...';
-                btn.disabled = true;
+        // ── File Selection ──
+        function selectPhotos() {
+            document.getElementById('photoInput').click();
+        }
 
-                const resp = await fetch('/api/browse-dialog');
-                const data = await resp.json();
-                
-                if (data.path) {
-                    document.getElementById('folderPath').value = data.path;
-                    showToast('Folder selected', 'success');
-                }
-                
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            } catch (e) {
-                showToast('Failed to open dialog: ' + e.message, 'error');
-                const btn = document.querySelector('.browse-btn');
-                btn.innerHTML = '&#128194; Browse';
-                btn.disabled = false;
+        function selectFolder() {
+            document.getElementById('folderInput').click();
+        }
+
+        function handlePhotoSelect(files) {
+            const imageFiles = Array.from(files).filter(isImageFile);
+            updateSelectedFiles(imageFiles);
+        }
+
+        function handleFolderSelect(files) {
+            const imageFiles = Array.from(files).filter(isImageFile);
+            updateSelectedFiles(imageFiles);
+        }
+
+        function updateSelectedFiles(imageFiles) {
+            selectedFiles = imageFiles;
+            const count = selectedFiles.length;
+            const uploadInfo = document.getElementById('uploadInfo');
+            const countSpan = document.getElementById('selectedCount');
+
+            if (count > 0) {
+                countSpan.textContent = `${count} image${count > 1 ? 's' : ''} selected`;
+                uploadInfo.classList.add('has-files');
+                showToast(`${count} images ready to scan`, 'success');
+            } else {
+                countSpan.textContent = 'No images found in selection';
+                uploadInfo.classList.remove('has-files');
+                showToast('No image files found in selection', 'error');
             }
         }
 
-        // ── Scan Flow (server-side directory scan — operates on REAL files) ──
+        // ── Scan Flow (Upload files to cloud container) ──
         async function startScan() {
-            const folderPath = document.getElementById('folderPath').value.trim();
+            if (selectedFiles.length === 0) {
+                showToast('Please select photos or a folder first', 'error');
+                return;
+            }
 
-            if (!folderPath) {
-                showToast('Please paste a folder path first', 'error');
+            if (selectedFiles.length < 2) {
+                showToast('Need at least 2 images to find duplicates', 'error');
                 return;
             }
 
@@ -677,25 +637,27 @@
             const hashType = document.getElementById('hashType').value;
 
             document.getElementById('scanBtn').disabled = true;
-            document.getElementById('scanBtn').innerHTML = '<span>&#9203;</span> Scanning...';
+            document.getElementById('scanBtn').innerHTML = '<span>&#9203;</span> Uploading & Scanning...';
             document.getElementById('progressSection').classList.add('active');
             document.getElementById('results').classList.remove('active');
             document.getElementById('emptyState').style.display = 'none';
 
             try {
-                const resp = await fetch('/api/scan', {
+                const formData = new FormData();
+                selectedFiles.forEach(file => {
+                    formData.append('photos', file);
+                });
+                formData.append('threshold', threshold);
+                formData.append('hash_type', hashType);
+
+                const resp = await fetch('/api/upload-scan', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        directory: folderPath,
-                        threshold: threshold,
-                        hash_type: hashType
-                    })
+                    body: formData
                 });
 
                 if (!resp.ok) {
                     const err = await resp.json();
-                    showToast(err.error || 'Scan failed', 'error');
+                    showToast(err.error || 'Upload failed', 'error');
                     resetScanUI();
                     return;
                 }
@@ -933,14 +895,21 @@
                 document.getElementById('groups').innerHTML = '';
                 document.getElementById('stats').innerHTML = '';
 
-                document.getElementById('emptyState').style.display = 'block';
+                document.getElementById('emptyState').display = 'block';
                 document.getElementById('emptyState').innerHTML = `
                     <div class="icon">&#9989;</div>
                     <h3>Done!</h3>
-                    <p>${escapeHtml(message)}. You can scan again to verify.</p>`;
+                    <p>${escapeHtml(message)}. Select new photos to scan again.</p>`;
 
                 document.getElementById('scanBtn').disabled = false;
                 document.getElementById('scanBtn').innerHTML = '<span>&#128269;</span> Start Scan';
+
+                // Reset file selection
+                selectedFiles = [];
+                document.getElementById('photoInput').value = '';
+                document.getElementById('folderInput').value = '';
+                document.getElementById('selectedCount').textContent = 'No photos or folder selected';
+                document.getElementById('uploadInfo').classList.remove('has-files');
 
             } catch (e) {
                 showToast('Action failed: ' + e.message, 'error');
