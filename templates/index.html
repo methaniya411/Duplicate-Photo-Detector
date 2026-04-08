@@ -6,6 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0f1117">
+    <meta name="description" content="Find and remove duplicate photos using perceptual hashing.">
     <title>Duplicate Photo Detector</title>
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/static/icon-192.png">
@@ -51,88 +52,90 @@
             font-weight: 700;
             background: linear-gradient(135deg, var(--accent), #a29bfe);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 4px;
         }
 
         header p { color: var(--text-dim); font-size: 0.85rem; }
 
-        /* Upload Section */
-        .upload-section { margin-bottom: 20px; }
+        /* Path Input Section */
+        .path-section {
+            margin-bottom: 20px;
+        }
 
-        .upload-btn {
-            width: 100%;
-            padding: 24px;
+        .path-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .path-input {
+            flex: 1;
+            padding: 14px 16px;
             background: var(--surface);
-            border: 2px dashed var(--accent);
+            border: 2px solid var(--border);
             border-radius: var(--radius);
-            color: var(--accent);
-            font-size: 1.1rem;
+            color: var(--text);
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .path-input:focus {
+            border-color: var(--accent);
+        }
+
+        .path-input::placeholder {
+            color: var(--text-dim);
+        }
+
+        .browse-btn {
+            padding: 14px 20px;
+            background: var(--accent);
+            border: none;
+            border-radius: var(--radius);
+            color: white;
+            font-size: 0.9rem;
             font-weight: 600;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
+            white-space: nowrap;
             transition: all 0.2s;
         }
 
-        .upload-btn:active { background: rgba(108, 92, 231, 0.1); transform: scale(0.98); }
+        .browse-btn:hover { background: var(--accent-hover); }
 
-        .upload-info {
-            text-align: center;
-            padding: 12px;
-            color: var(--text-dim);
-            font-size: 0.9rem;
-        }
-
-        .upload-info.has-files { color: var(--success); }
-
-        /* Mobile Directory Browser */
-        .dir-browser {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            max-height: 300px;
-            overflow-y: auto;
-            margin-bottom: 16px;
-            display: none;
-        }
-
-        .dir-browser.active { display: block; }
-
-        .dir-header {
-            padding: 12px 16px;
-            background: var(--surface2);
+        .path-hint {
             font-size: 0.8rem;
             color: var(--text-dim);
-            font-family: monospace;
-            position: sticky;
-            top: 0;
+            padding: 0 4px;
         }
 
-        .dir-list { padding: 8px; }
+        .path-hint b { color: var(--text); }
 
-        .dir-item {
-            padding: 14px 16px;
-            cursor: pointer;
-            border-radius: 8px;
+        /* Quick Paths */
+        .quick-paths {
             display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 1rem;
-            transition: background 0.15s;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
         }
 
-        .dir-item:active { background: var(--accent); }
-        .dir-item.selected { background: rgba(46, 204, 113, 0.2); color: var(--success); }
+        .quick-path-btn {
+            padding: 8px 14px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
 
-        .dir-item.back {
-            color: var(--accent);
-            font-weight: 600;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 8px;
-            padding-bottom: 12px;
+        .quick-path-btn:hover {
+            color: var(--text);
+            border-color: var(--accent);
+            background: rgba(108, 92, 231, 0.1);
         }
 
         /* Settings */
@@ -157,6 +160,13 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 8px;
+        }
+
+        .setting-card .hint {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-top: 6px;
+            line-height: 1.4;
         }
 
         .setting-card input, .setting-card select {
@@ -191,14 +201,12 @@
             margin-bottom: 20px;
         }
 
+        .scan-btn:hover { background: var(--accent-hover); }
         .scan-btn:active { background: var(--accent-hover); transform: scale(0.98); }
         .scan-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
         /* Progress */
-        .progress-section { 
-            display: none; 
-            margin-bottom: 20px;
-        }
+        .progress-section { display: none; margin-bottom: 20px; }
         .progress-section.active { display: block; }
 
         .progress-card {
@@ -290,20 +298,15 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
+            transition: all 0.2s;
         }
 
-        .action-btn.delete {
-            background: var(--danger);
-            color: white;
-        }
-
-        .action-btn.move {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            color: var(--text);
-        }
-
+        .action-btn.delete { background: var(--danger); color: white; }
+        .action-btn.delete:hover { background: var(--danger-hover); }
+        .action-btn.move { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+        .action-btn.move:hover { background: var(--surface2); }
         .action-btn:active { transform: scale(0.97); }
+        .action-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
         /* Duplicate Groups */
         .dup-group {
@@ -322,10 +325,7 @@
             align-items: center;
         }
 
-        .group-info {
-            font-size: 0.9rem;
-            color: var(--text-dim);
-        }
+        .group-info { font-size: 0.9rem; color: var(--text-dim); }
 
         .badge {
             padding: 4px 10px;
@@ -358,9 +358,7 @@
             display: block;
         }
 
-        .img-card .card-body {
-            padding: 12px;
-        }
+        .img-card .card-body { padding: 12px; }
 
         .card-header {
             display: flex;
@@ -398,6 +396,14 @@
             background: var(--bg);
             color: var(--text-dim);
             font-size: 2.5rem;
+        }
+
+        .file-path {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            word-break: break-all;
+            margin-top: 4px;
+            opacity: 0.7;
         }
 
         /* Bottom Navigation */
@@ -482,34 +488,35 @@
     <div class="container">
         <header>
             <h1>Duplicate Photo Detector</h1>
-            <p>Find and remove duplicate photos</p>
+            <p>Find and remove duplicate photos from your folders</p>
         </header>
 
-        <section class="upload-section">
-            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                <button class="upload-btn" onclick="selectFolder()" style="flex:1; padding: 16px; font-size: 1rem;">
-                    &#128194; Select Folder
-                </button>
-                <button class="upload-btn" onclick="selectPhotos()" style="flex:1; padding: 16px; font-size: 1rem;">
-                    &#128247; Select Photos
-                </button>
+        <!-- LOCAL FOLDER PATH (primary flow — scans real files) -->
+        <section class="path-section">
+            <div class="path-input-group">
+                <input type="text" class="path-input" id="folderPath"
+                       placeholder="Paste folder path, e.g. D:\Photos\Vacation"
+                       onkeydown="if(event.key==='Enter') startScan()">
+                <button class="browse-btn" onclick="browseFolder()">&#128194; Browse</button>
             </div>
-            <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;" onchange="handlePhotos(this.files)">
-            <input type="file" id="photoInput" multiple accept="image/*" style="display:none;" onchange="handlePhotos(this.files)">
-            <div class="upload-info" id="uploadInfo">
-                <span id="selectedCount">No photos or folder selected</span>
+            <div class="path-hint">
+                Paste the <b>full path</b> to the folder containing your photos. The scanner reads files directly — deletions remove the <b>actual files</b>.
+            </div>
+            <div class="quick-paths" id="quickPaths">
+                <!-- Filled dynamically -->
             </div>
         </section>
 
         <div class="settings-grid">
             <div class="setting-card">
-                <label>Similarity</label>
+                <label>Sensitivity</label>
                 <input type="number" id="threshold" value="10" min="0" max="64">
+                <div class="hint">Lower = stricter matching. Higher = catches more duplicates. Default: 10</div>
             </div>
             <div class="setting-card">
                 <label>Hash Algorithm</label>
                 <select id="hashType">
-                    <option value="phash">pHash</option>
+                    <option value="phash">pHash (recommended)</option>
                     <option value="dhash">dHash</option>
                     <option value="ahash">aHash</option>
                     <option value="whash">wHash</option>
@@ -540,12 +547,12 @@
         <section class="results" id="results">
             <div class="stats-grid" id="stats"></div>
 
-            <div class="action-buttons">
-                <button class="action-btn delete" onclick="deleteDuplicates()">
-                    &#128465; Delete All
+            <div class="action-buttons" id="actionButtons">
+                <button class="action-btn delete" id="deleteBtn" onclick="deleteDuplicates()">
+                    &#128465; Delete Duplicates
                 </button>
-                <button class="action-btn move" onclick="moveDuplicates()">
-                    &#128193; Move All
+                <button class="action-btn move" id="moveBtn" onclick="moveDuplicates()">
+                    &#128193; Move to Folder
                 </button>
             </div>
 
@@ -555,7 +562,7 @@
         <div class="empty-state" id="emptyState">
             <div class="icon">&#128247;</div>
             <h3>Ready to Scan</h3>
-            <p>Select photos from your phone and tap Start Scan</p>
+            <p>Paste a folder path above, then click Start Scan</p>
         </div>
     </div>
 
@@ -573,233 +580,379 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        let currentScanId = null;
-        let selectedFiles = [];
-        let uploadSessionId = null;
+        // ── State ──
+        let activeScanId = null;
+        let scanInProgress = false;
 
-        function selectPhotos() {
-            document.getElementById('photoInput').click();
+        // ── Helpers ──
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
         }
 
-        function selectFolder() {
-            document.getElementById('folderInput').click();
+        function formatSize(bytes) {
+            if (!bytes || isNaN(bytes)) return '0 B';
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
         }
 
-        function handlePhotos(files) {
-            selectedFiles = Array.from(files);
-            const count = selectedFiles.length;
-            const uploadInfo = document.getElementById('uploadInfo');
-            
-            if (count > 0) {
-                uploadInfo.textContent = `${count} file${count > 1 ? 's' : ''} selected`;
-                uploadInfo.classList.add('has-files');
-                showToast(`${count} files ready to scan`, 'success');
-            } else {
-                uploadInfo.textContent = 'No selection';
-                uploadInfo.classList.remove('has-files');
+        function capitalize(str) {
+            if (!str) return '';
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        // ── Load quick paths on startup ──
+        async function loadQuickPaths() {
+            try {
+                const resp = await fetch('/api/browse', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: '' })
+                });
+                const data = await resp.json();
+                if (data.dirs && data.dirs.length > 0) {
+                    const container = document.getElementById('quickPaths');
+                    // data.dirs can be array of strings or objects
+                    data.dirs.forEach(d => {
+                        const path = typeof d === 'string' ? d : d.path;
+                        const name = typeof d === 'string' ? d.split(/[\\/]/).pop() : d.name;
+                        const btn = document.createElement('button');
+                        btn.className = 'quick-path-btn';
+                        btn.textContent = '📁 ' + name;
+                        btn.onclick = () => {
+                            document.getElementById('folderPath').value = path;
+                            showToast('Path set: ' + path, 'success');
+                        };
+                        container.appendChild(btn);
+                    });
+                }
+            } catch (e) {
+                // Ignore — not critical
+            }
+        }
+        loadQuickPaths();
+
+        // ── Browse (Native OS Folder Picker via Python Backend) ──
+        async function browseFolder() {
+            try {
+                // Show loading state on button
+                const btn = document.querySelector('.browse-btn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<span>&#9203;</span> Waiting...';
+                btn.disabled = true;
+
+                const resp = await fetch('/api/browse-dialog');
+                const data = await resp.json();
+                
+                if (data.path) {
+                    document.getElementById('folderPath').value = data.path;
+                    showToast('Folder selected', 'success');
+                }
+                
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            } catch (e) {
+                showToast('Failed to open dialog: ' + e.message, 'error');
+                const btn = document.querySelector('.browse-btn');
+                btn.innerHTML = '&#128194; Browse';
+                btn.disabled = false;
             }
         }
 
+        // ── Scan Flow (server-side directory scan — operates on REAL files) ──
         async function startScan() {
-            if (selectedFiles.length === 0) { 
-                showToast('Please select photos first', 'error'); 
-                return; 
+            const folderPath = document.getElementById('folderPath').value.trim();
+
+            if (!folderPath) {
+                showToast('Please paste a folder path first', 'error');
+                return;
             }
+
+            if (scanInProgress) return;
+            scanInProgress = true;
 
             const threshold = parseInt(document.getElementById('threshold').value) || 10;
             const hashType = document.getElementById('hashType').value;
 
             document.getElementById('scanBtn').disabled = true;
-            document.getElementById('scanBtn').innerHTML = '<span>&#9203;</span> Uploading...';
+            document.getElementById('scanBtn').innerHTML = '<span>&#9203;</span> Scanning...';
             document.getElementById('progressSection').classList.add('active');
             document.getElementById('results').classList.remove('active');
             document.getElementById('emptyState').style.display = 'none';
 
             try {
-                const formData = new FormData();
-                selectedFiles.forEach((file, i) => {
-                    formData.append('photos', file);
-                });
-                formData.append('threshold', threshold);
-                formData.append('hash_type', hashType);
-
-                const resp = await fetch('/api/upload-scan', {
+                const resp = await fetch('/api/scan', {
                     method: 'POST',
-                    body: formData
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        directory: folderPath,
+                        threshold: threshold,
+                        hash_type: hashType
+                    })
                 });
 
                 if (!resp.ok) {
                     const err = await resp.json();
-                    showToast(err.error || 'Upload failed', 'error');
-                    resetUI();
+                    showToast(err.error || 'Scan failed', 'error');
+                    resetScanUI();
                     return;
                 }
 
                 const data = await resp.json();
-                uploadSessionId = data.scan_id;
+                activeScanId = data.scan_id;
                 pollProgress();
             } catch (e) {
                 showToast('Connection error: ' + e.message, 'error');
-                resetUI();
+                resetScanUI();
             }
         }
 
+        // ── Progress Polling ──
         async function pollProgress() {
+            if (!activeScanId) { resetScanUI(); return; }
+
+            let retries = 0;
+            const maxRetries = 5;
+
             const poll = async () => {
-                const scanId = uploadSessionId || currentScanId;
-                const resp = await fetch(`/api/progress/${scanId}`);
-                const data = await resp.json();
+                try {
+                    const resp = await fetch(`/api/progress/${activeScanId}`);
+                    if (!resp.ok) {
+                        retries++;
+                        if (retries >= maxRetries) {
+                            showToast('Lost connection to scan. Please try again.', 'error');
+                            resetScanUI();
+                            return;
+                        }
+                        setTimeout(poll, 1000);
+                        return;
+                    }
 
-                document.getElementById('progressFill').style.width = data.progress.pct + '%';
-                document.getElementById('progressPct').textContent = data.progress.pct + '%';
-                document.getElementById('progressFiles').textContent = 
-                    `${data.progress.current} / ${data.progress.total} files`;
-                document.getElementById('progressStatus').textContent = capitalize(data.progress.status) + '...';
+                    retries = 0;
+                    const data = await resp.json();
 
-                if (data.done) {
-                    loadResults();
-                } else {
-                    setTimeout(poll, 500);
+                    if (data.error) { showToast(data.error, 'error'); resetScanUI(); return; }
+
+                    const pct = data.progress ? (data.progress.pct || 0) : 0;
+                    const current = data.progress ? (data.progress.current || 0) : 0;
+                    const total = data.progress ? (data.progress.total || 0) : 0;
+                    const status = data.progress ? (data.progress.status || 'working') : 'working';
+
+                    document.getElementById('progressFill').style.width = pct + '%';
+                    document.getElementById('progressPct').textContent = pct + '%';
+                    document.getElementById('progressFiles').textContent = `${current} / ${total} files`;
+                    document.getElementById('progressStatus').textContent = capitalize(status) + '...';
+
+                    if (data.done) {
+                        loadResults();
+                    } else {
+                        setTimeout(poll, 500);
+                    }
+                } catch (e) {
+                    retries++;
+                    if (retries >= maxRetries) {
+                        showToast('Connection lost. Please try again.', 'error');
+                        resetScanUI();
+                        return;
+                    }
+                    setTimeout(poll, 1000);
                 }
             };
             poll();
         }
 
+        // ── Results Display ──
         async function loadResults() {
-            const scanId = uploadSessionId || currentScanId;
-            const resp = await fetch(`/api/results/${scanId}`);
-            const data = await resp.json();
+            if (!activeScanId) { resetScanUI(); return; }
 
-            resetUI();
-            document.getElementById('progressSection').classList.remove('active');
+            try {
+                const resp = await fetch(`/api/results/${activeScanId}`);
+                if (!resp.ok) { showToast('Failed to load results', 'error'); resetScanUI(); return; }
 
-            if (data.total_groups === 0) {
-                document.getElementById('emptyState').style.display = 'block';
-                document.getElementById('emptyState').innerHTML = `
-                    <div class="icon">&#9989;</div>
-                    <h3>No Duplicates Found</h3>
-                    <p>Your photos are clean!</p>`;
-                return;
-            }
+                const data = await resp.json();
+                if (data.error) { showToast(data.error, 'error'); resetScanUI(); return; }
 
-            const spaceMB = (data.total_space / (1024 * 1024)).toFixed(1);
-            document.getElementById('stats').innerHTML = `
-                <div class="stat-card">
-                    <div class="value">${data.total_groups}</div>
-                    <div class="label">Groups</div>
-                </div>
-                <div class="stat-card">
-                    <div class="value">${data.total_duplicates}</div>
-                    <div class="label">Duplicates</div>
-                </div>
-                <div class="stat-card">
-                    <div class="value">${spaceMB} MB</div>
-                    <div class="label">Space</div>
-                </div>`;
+                resetScanUI();
+                document.getElementById('progressSection').classList.remove('active');
 
-            let html = '';
-            data.groups.forEach((g, i) => {
-                const badge = g.type === 'exact'
-                    ? '<span class="badge badge-exact">Exact</span>'
-                    : '<span class="badge badge-near">Near</span>';
+                const totalGroups = data.total_groups || 0;
+                const totalDuplicates = data.total_duplicates || 0;
+                const totalSpace = data.total_space || 0;
 
-                html += `
-                <div class="dup-group">
-                    <div class="dup-group-header">
-                        <span class="group-info">Group ${i + 1} &bull; ${g.duplicates.length + 1} photos</span>
-                        ${badge}
+                if (totalGroups === 0) {
+                    document.getElementById('emptyState').style.display = 'block';
+                    document.getElementById('emptyState').innerHTML = `
+                        <div class="icon">&#9989;</div>
+                        <h3>No Duplicates Found</h3>
+                        <p>Your photos are all unique!</p>`;
+                    return;
+                }
+
+                const spaceMB = (totalSpace / (1024 * 1024)).toFixed(1);
+
+                document.getElementById('stats').innerHTML = `
+                    <div class="stat-card">
+                        <div class="value">${totalGroups}</div>
+                        <div class="label">Groups</div>
                     </div>
-                    <div class="dup-images">
-                        <div class="img-card">
-                            ${g.keeper_info.thumb
-                                ? `<img src="data:image/jpeg;base64,${g.keeper_info.thumb}">`
-                                : `<div class="no-img">&#127748;</div>`}
-                            <div class="card-body">
-                                <div class="card-header">
-                                    <span class="tag tag-keep">Keep</span>
-                                </div>
-                                <div class="img-name" title="${g.keeper_info.name}">${g.keeper_info.name}</div>
-                                <div class="img-meta">${(g.keeper_info.size / 1024).toFixed(0)} KB &bull; ${g.keeper_info.width}x${g.keeper_info.height}</div>
-                            </div>
-                        </div>`;
+                    <div class="stat-card">
+                        <div class="value">${totalDuplicates}</div>
+                        <div class="label">Duplicates</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value">${spaceMB} MB</div>
+                        <div class="label">Recoverable</div>
+                    </div>`;
 
-                g.duplicates_info.forEach(d => {
+                const groups = data.groups || [];
+                let html = '';
+                groups.forEach((g, i) => {
+                    const badge = g.type === 'exact'
+                        ? '<span class="badge badge-exact">Exact</span>'
+                        : '<span class="badge badge-near">Near</span>';
+
+                    const keeperName = escapeHtml(g.keeper_info ? g.keeper_info.name : 'Unknown');
+                    const keeperInfo = g.keeper_info || {};
+
                     html += `
-                        <div class="img-card">
-                            ${d.thumb
-                                ? `<img src="data:image/jpeg;base64,${d.thumb}">`
-                                : `<div class="no-img">&#127748;</div>`}
-                            <div class="card-body">
-                                <div class="card-header">
-                                    <span class="tag tag-dup">Duplicate</span>
+                    <div class="dup-group">
+                        <div class="dup-group-header">
+                            <span class="group-info">Group ${i + 1} &bull; ${(g.duplicates || []).length + 1} photos</span>
+                            ${badge}
+                        </div>
+                        <div class="dup-images">
+                            <div class="img-card">
+                                ${keeperInfo.thumb
+                                    ? `<img src="data:image/jpeg;base64,${keeperInfo.thumb}" alt="Keeper photo">`
+                                    : `<div class="no-img">&#127748;</div>`}
+                                <div class="card-body">
+                                    <div class="card-header">
+                                        <span class="tag tag-keep">Keep</span>
+                                    </div>
+                                    <div class="img-name" title="${keeperName}">${keeperName}</div>
+                                    <div class="img-meta">${formatSize(keeperInfo.size)} &bull; ${keeperInfo.width || 0}x${keeperInfo.height || 0}</div>
+                                    <div class="file-path">${escapeHtml(keeperInfo.path || '')}</div>
                                 </div>
-                                <div class="img-name" title="${d.name}">${d.name}</div>
-                                <div class="img-meta">${(d.size / 1024).toFixed(0)} KB &bull; ${d.width}x${d.height}</div>
-                            </div>
-                        </div>`;
+                            </div>`;
+
+                    (g.duplicates_info || []).forEach(d => {
+                        const dupeName = escapeHtml(d.name || 'Unknown');
+                        html += `
+                            <div class="img-card">
+                                ${d.thumb
+                                    ? `<img src="data:image/jpeg;base64,${d.thumb}" alt="Duplicate photo">`
+                                    : `<div class="no-img">&#127748;</div>`}
+                                <div class="card-body">
+                                    <div class="card-header">
+                                        <span class="tag tag-dup">Duplicate</span>
+                                    </div>
+                                    <div class="img-name" title="${dupeName}">${dupeName}</div>
+                                    <div class="img-meta">${formatSize(d.size)} &bull; ${d.width || 0}x${d.height || 0}</div>
+                                    <div class="file-path">${escapeHtml(d.path || '')}</div>
+                                </div>
+                            </div>`;
+                    });
+
+                    html += `</div></div>`;
                 });
 
-                html += `</div></div>`;
-            });
+                document.getElementById('groups').innerHTML = html;
+                document.getElementById('results').classList.add('active');
+                document.querySelector('.nav-item:last-child').classList.add('active');
 
-            document.getElementById('groups').innerHTML = html;
-            document.getElementById('results').classList.add('active');
-            document.querySelector('.nav-item:last-child').classList.add('active');
+            } catch (e) {
+                showToast('Error loading results: ' + e.message, 'error');
+                resetScanUI();
+            }
         }
 
+        // ── Actions ──
         async function deleteDuplicates() {
-            if (!confirm('Permanently delete all duplicate files? This cannot be undone.')) return;
+            if (!confirm('⚠️ This will PERMANENTLY DELETE the duplicate files from your disk.\n\nThe "KEEP" files will remain. Only "DUPLICATE" files will be deleted.\n\nAre you sure?')) return;
             await doAction('delete');
         }
 
         async function moveDuplicates() {
-            await doAction('move');
+            const moveDir = prompt('Move duplicates to folder:', './duplicates');
+            if (moveDir === null) return;
+            await doAction('move', moveDir || './duplicates');
         }
 
-        async function doAction(action) {
-            const scanId = uploadSessionId || currentScanId;
-            
-            if (!scanId) {
+        async function doAction(action, moveDir) {
+            if (!activeScanId) {
                 showToast('No scan found. Please scan photos first.', 'error');
                 return;
             }
 
-            const resp = await fetch('/api/action', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ scan_id: scanId, action })
-            });
-            const result = await resp.json();
+            document.getElementById('deleteBtn').disabled = true;
+            document.getElementById('moveBtn').disabled = true;
 
-            if (result.error) {
-                showToast(result.error, 'error');
-                return;
-            }
+            try {
+                const body = { scan_id: activeScanId, action: action };
+                if (moveDir) body.move_dir = moveDir;
 
-            let message = '';
-            if (action === 'delete') {
-                message = `${result.deleted.length} deleted`;
-            } else {
-                message = `${result.moved.length} moved`;
+                const resp = await fetch('/api/action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                const result = await resp.json();
+
+                if (result.error) {
+                    showToast(result.error, 'error');
+                    document.getElementById('deleteBtn').disabled = false;
+                    document.getElementById('moveBtn').disabled = false;
+                    return;
+                }
+
+                let message = '';
+                const deletedCount = (result.deleted || []).length;
+                const movedCount = (result.moved || []).length;
+                const errorCount = (result.errors || []).length;
+
+                if (action === 'delete') {
+                    message = `${deletedCount} file${deletedCount !== 1 ? 's' : ''} deleted from disk`;
+                } else {
+                    message = `${movedCount} file${movedCount !== 1 ? 's' : ''} moved`;
+                }
+                if (errorCount > 0) {
+                    message += `, ${errorCount} failed`;
+                    console.error('Action errors:', result.errors);
+                }
+
+                showToast(message, errorCount > 0 ? 'error' : 'success');
+
+                // Reset UI fully after action
+                activeScanId = null;
+                scanInProgress = false;
+
+                document.getElementById('results').classList.remove('active');
+                document.getElementById('groups').innerHTML = '';
+                document.getElementById('stats').innerHTML = '';
+
+                document.getElementById('emptyState').style.display = 'block';
+                document.getElementById('emptyState').innerHTML = `
+                    <div class="icon">&#9989;</div>
+                    <h3>Done!</h3>
+                    <p>${escapeHtml(message)}. You can scan again to verify.</p>`;
+
+                document.getElementById('scanBtn').disabled = false;
+                document.getElementById('scanBtn').innerHTML = '<span>&#128269;</span> Start Scan';
+
+            } catch (e) {
+                showToast('Action failed: ' + e.message, 'error');
+            } finally {
+                document.getElementById('deleteBtn').disabled = false;
+                document.getElementById('moveBtn').disabled = false;
             }
-            
-            if (result.errors.length > 0) {
-                message += `, ${result.errors.length} failed`;
-            }
-            
-            showToast(message, result.errors.length > 0 ? 'error' : 'success');
-            
-            if (result.deleted.length > 0 || result.moved.length > 0) {
-                uploadSessionId = null;
-                selectedFiles = [];
-                document.getElementById('uploadInfo').textContent = 'No photos selected';
-                document.getElementById('uploadInfo').classList.remove('has-files');
-            }
-            
-            loadResults();
         }
 
-        function resetUI() {
+        // ── UI Helpers ──
+        function resetScanUI() {
+            scanInProgress = false;
             document.getElementById('scanBtn').disabled = false;
             document.getElementById('scanBtn').innerHTML = '<span>&#128269;</span> Start Scan';
         }
@@ -808,11 +961,7 @@
             const toast = document.getElementById('toast');
             toast.textContent = msg;
             toast.className = `toast toast-${type} show`;
-            setTimeout(() => toast.classList.remove('show'), 3000);
-        }
-
-        function capitalize(str) {
-            return str.charAt(0).toUpperCase() + str.slice(1);
+            setTimeout(() => toast.classList.remove('show'), 4000);
         }
 
         function scrollToTop() {
