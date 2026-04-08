@@ -758,6 +758,12 @@
 
         async function doAction(action) {
             const scanId = uploadSessionId || currentScanId;
+            
+            if (!scanId) {
+                showToast('No scan found. Please scan photos first.', 'error');
+                return;
+            }
+
             const resp = await fetch('/api/action', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -766,12 +772,22 @@
             const data = await resp.json();
 
             if (data.error) {
-                showToast(data.error, 'error');
+                showToast(data.error + (data.scan_ids ? ` Available: ${data.scan_ids.length}` : ''), 'error');
                 return;
             }
 
-            const count = action === 'delete' ? data.deleted.length : data.moved.length;
-            showToast(`${count} duplicates ${action === 'delete' ? 'deleted' : 'moved'}`, 'success');
+            let message = '';
+            if (action === 'delete') {
+                message = `${data.deleted.length} deleted, ${data.errors.length} failed`;
+            } else {
+                message = `${data.moved.length} moved, ${data.errors.length} failed`;
+            }
+            showToast(message, data.errors.length > 0 ? 'error' : 'success');
+            
+            if (data.errors.length > 0) {
+                console.log('Errors:', data.errors);
+            }
+            
             loadResults();
         }
 

@@ -430,11 +430,15 @@ def api_action():
     action = data.get("action", "")
     move_dir = data.get("move_dir", "./duplicates")
 
+    print(f"API Action: scan_id={scan_id}, action={action}")
+
     if scan_id not in scan_results:
-        return jsonify({"error": "Scan not found"}), 404
+        print(f"Scan not found: {scan_id}")
+        return jsonify({"error": "Scan not found", "scan_ids": list(scan_results.keys())}), 404
 
     groups = scan_results[scan_id].get("groups", [])
     if not groups:
+        print("No groups found")
         return jsonify({"error": "No results to act on"}), 400
 
     results = {"deleted": [], "moved": [], "errors": []}
@@ -442,9 +446,16 @@ def api_action():
     for group in groups:
         for dupe_info in group["duplicates_info"]:
             filepath = dupe_info["path"]
+            print(f"Trying to {action}: {filepath}")
             try:
+                if not os.path.exists(filepath):
+                    print(f"File not found: {filepath}")
+                    results["errors"].append({"file": filepath, "error": "File not found"})
+                    continue
+                    
                 if action == "delete":
                     os.remove(filepath)
+                    print(f"Deleted: {filepath}")
                     results["deleted"].append(filepath)
                 elif action == "move":
                     os.makedirs(move_dir, exist_ok=True)
@@ -457,8 +468,10 @@ def api_action():
                     shutil.move(filepath, dest)
                     results["moved"].append({"from": filepath, "to": dest})
             except Exception as e:
+                print(f"Error: {filepath} - {str(e)}")
                 results["errors"].append({"file": filepath, "error": str(e)})
 
+    print(f"Results: {results}")
     return jsonify(results)
 
 
