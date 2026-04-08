@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    ports:
+      - "5000:10000"
+    volumes:
+      - ./photos:/photos:ro
+    environment:
+      - PORT=10000
+      - FLASK_ENV=production
+    restart: unless-stopped

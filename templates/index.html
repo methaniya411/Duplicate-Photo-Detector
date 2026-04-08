@@ -2,10 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0f1117">
     <title>Duplicate Photo Detector</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         :root {
             --bg: #0f1117;
@@ -21,6 +26,7 @@
             --success: #2ecc71;
             --warning: #f39c12;
             --radius: 12px;
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
         }
 
         body {
@@ -28,197 +34,201 @@
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
+            min-height: 100dvh;
             line-height: 1.6;
+            padding-bottom: calc(70px + var(--safe-bottom));
         }
 
-        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 16px; }
 
         header {
             text-align: center;
-            padding: 40px 0 32px;
+            padding: 24px 0 20px;
         }
 
         header h1 {
-            font-size: 2rem;
+            font-size: 1.5rem;
             font-weight: 700;
             background: linear-gradient(135deg, var(--accent), #a29bfe);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
 
-        header p { color: var(--text-dim); font-size: 0.95rem; }
+        header p { color: var(--text-dim); font-size: 0.85rem; }
 
-        /* Scanner Panel */
-        .panel {
+        /* Mobile Folder Picker */
+        .mobile-folder-section { margin-bottom: 20px; }
+
+        .folder-input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .folder-input-group input {
+            flex: 1;
+            padding: 14px 16px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .folder-input-group input:focus { border-color: var(--accent); }
+        .folder-input-group input::placeholder { color: var(--text-dim); }
+
+        .browse-btn {
+            padding: 14px 20px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .browse-btn:active { background: var(--surface); }
+
+        /* Mobile Directory Browser */
+        .dir-browser {
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 24px;
-            margin-bottom: 24px;
-        }
-
-        .panel h2 {
-            font-size: 1.1rem;
-            font-weight: 600;
+            max-height: 300px;
+            overflow-y: auto;
             margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            display: none;
         }
 
-        .panel h2 .icon { font-size: 1.3rem; }
+        .dir-browser.active { display: block; }
 
-        .form-row {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-
-        .form-group { flex: 1; min-width: 200px; }
-
-        .form-group label {
-            display: block;
+        .dir-header {
+            padding: 12px 16px;
+            background: var(--surface2);
             font-size: 0.8rem;
             color: var(--text-dim);
-            margin-bottom: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            font-family: monospace;
+            position: sticky;
+            top: 0;
         }
 
-        input[type="text"], input[type="number"], select {
-            width: 100%;
-            padding: 10px 14px;
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text);
-            font-size: 0.9rem;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        input:focus, select:focus { border-color: var(--accent); }
-
-        .btn {
-            padding: 10px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: var(--accent);
-            color: white;
-        }
-
-        .btn-primary:hover { background: var(--accent-hover); }
-        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-        }
-
-        .btn-danger:hover { background: var(--danger-hover); }
-
-        .btn-outline {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: var(--text);
-        }
-
-        .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
-
-        .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
-
-        /* Directory Browser */
-        .dir-browser {
-            background: var(--surface2);
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 12px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
+        .dir-list { padding: 8px; }
 
         .dir-item {
-            padding: 8px 12px;
+            padding: 14px 16px;
             cursor: pointer;
-            border-radius: 6px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1rem;
+            transition: background 0.15s;
+        }
+
+        .dir-item:active { background: var(--accent); }
+        .dir-item.selected { background: rgba(46, 204, 113, 0.2); color: var(--success); }
+
+        .dir-item.back {
+            color: var(--accent);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 8px;
+            padding-bottom: 12px;
+        }
+
+        /* Settings */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .setting-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+        }
+
+        .setting-card label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .setting-card input, .setting-card select {
+            width: 100%;
+            padding: 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .setting-card select { cursor: pointer; }
+
+        /* Scan Button */
+        .scan-btn {
+            width: 100%;
+            padding: 18px;
+            background: var(--accent);
+            border: none;
+            border-radius: var(--radius);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .scan-btn:active { background: var(--accent-hover); transform: scale(0.98); }
+        .scan-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* Progress */
+        .progress-section { 
+            display: none; 
+            margin-bottom: 20px;
+        }
+        .progress-section.active { display: block; }
+
+        .progress-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+        }
+
+        .progress-status {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 0.9rem;
         }
-
-        .dir-item:hover { background: var(--accent); color: white; }
-
-        .dir-path {
-            font-size: 0.8rem;
-            color: var(--text-dim);
-            padding: 8px 12px;
-            font-family: monospace;
-        }
-
-        /* Drag & Drop Zone */
-        .drop-zone {
-            border: 2px dashed var(--border);
-            border-radius: var(--radius);
-            padding: 32px 24px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: var(--surface2);
-            margin-bottom: 12px;
-            position: relative;
-        }
-
-        .drop-zone:hover { border-color: var(--accent); background: rgba(108, 92, 231, 0.05); }
-
-        .drop-zone.drag-over {
-            border-color: var(--accent);
-            background: rgba(108, 92, 231, 0.15);
-            transform: scale(1.01);
-        }
-
-        .drop-zone.has-folder {
-            border-color: var(--success);
-            background: rgba(46, 204, 113, 0.08);
-        }
-
-        .drop-zone .drop-icon { font-size: 2.5rem; margin-bottom: 8px; }
-        .drop-zone .drop-text { font-size: 0.95rem; color: var(--text); margin-bottom: 4px; }
-        .drop-zone .drop-hint { font-size: 0.8rem; color: var(--text-dim); }
-        .drop-zone .folder-name {
-            font-size: 0.9rem;
-            color: var(--success);
-            font-weight: 600;
-            margin-top: 8px;
-        }
-
-        .drop-zone input[type="file"] {
-            position: absolute;
-            inset: 0;
-            opacity: 0;
-            cursor: pointer;
-        }
-
-        /* Progress */
-        .progress-container { display: none; margin-bottom: 24px; }
-        .progress-container.active { display: block; }
 
         .progress-bar {
-            height: 8px;
+            height: 10px;
             background: var(--surface2);
-            border-radius: 4px;
+            border-radius: 5px;
             overflow: hidden;
             margin-bottom: 8px;
         }
@@ -226,12 +236,12 @@
         .progress-fill {
             height: 100%;
             background: linear-gradient(90deg, var(--accent), #a29bfe);
-            border-radius: 4px;
+            border-radius: 5px;
             transition: width 0.3s;
             width: 0%;
         }
 
-        .progress-text {
+        .progress-numbers {
             font-size: 0.85rem;
             color: var(--text-dim);
             display: flex;
@@ -242,39 +252,66 @@
         .results { display: none; }
         .results.active { display: block; }
 
-        .stats {
+        .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 12px;
-            margin-bottom: 24px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
         }
 
         .stat-card {
-            background: var(--surface2);
-            border-radius: 8px;
-            padding: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 12px;
             text-align: center;
         }
 
         .stat-card .value {
-            font-size: 1.8rem;
+            font-size: 1.4rem;
             font-weight: 700;
             color: var(--accent);
         }
 
         .stat-card .label {
-            font-size: 0.75rem;
+            font-size: 0.65rem;
             color: var(--text-dim);
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        .actions-bar {
-            display: flex;
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 12px;
             margin-bottom: 20px;
-            flex-wrap: wrap;
         }
+
+        .action-btn {
+            padding: 16px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .action-btn.delete {
+            background: var(--danger);
+            color: white;
+        }
+
+        .action-btn.move {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .action-btn:active { transform: scale(0.97); }
 
         /* Duplicate Groups */
         .dup-group {
@@ -286,69 +323,64 @@
         }
 
         .dup-group-header {
-            padding: 12px 16px;
+            padding: 14px 16px;
             background: var(--surface2);
-            font-size: 0.85rem;
-            color: var(--text-dim);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
+        .group-info {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+        }
+
         .badge {
-            padding: 2px 8px;
-            border-radius: 4px;
+            padding: 4px 10px;
+            border-radius: 6px;
             font-size: 0.7rem;
             text-transform: uppercase;
-            font-weight: 600;
+            font-weight: 700;
         }
 
         .badge-exact { background: var(--danger); color: white; }
         .badge-near { background: var(--warning); color: #333; }
 
-        .dup-group-body {
+        .dup-images {
+            padding: 12px;
             display: flex;
-            gap: 16px;
-            padding: 16px;
-            overflow-x: auto;
+            flex-direction: column;
+            gap: 12px;
         }
 
         .img-card {
-            flex: 0 0 180px;
             background: var(--surface2);
-            border-radius: 8px;
+            border-radius: 10px;
             overflow: hidden;
-            position: relative;
         }
 
         .img-card img {
             width: 100%;
-            height: 140px;
+            height: 180px;
             object-fit: cover;
             display: block;
         }
 
-        .img-card .info {
-            padding: 10px;
-            font-size: 0.75rem;
+        .img-card .card-body {
+            padding: 12px;
         }
 
-        .img-card .info .name {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-bottom: 4px;
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
         }
 
-        .img-card .info .meta { color: var(--text-dim); }
-
-        .img-card .tag {
-            position: absolute;
-            top: 8px;
-            left: 8px;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 0.65rem;
+        .tag {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.7rem;
             font-weight: 700;
             text-transform: uppercase;
         }
@@ -356,33 +388,75 @@
         .tag-keep { background: var(--success); color: white; }
         .tag-dup { background: var(--danger); color: white; }
 
+        .img-name {
+            font-size: 0.85rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+
+        .img-meta { font-size: 0.75rem; color: var(--text-dim); }
+
         .no-img {
-            width: 100%;
-            height: 140px;
+            height: 180px;
             display: flex;
             align-items: center;
             justify-content: center;
             background: var(--bg);
             color: var(--text-dim);
-            font-size: 2rem;
+            font-size: 2.5rem;
         }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            display: flex;
+            padding: 8px 0;
+            padding-bottom: calc(8px + var(--safe-bottom));
+            z-index: 100;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .nav-item.active { color: var(--accent); }
+        .nav-item .icon { font-size: 1.4rem; }
 
         /* Toast */
         .toast {
             position: fixed;
-            bottom: 24px;
-            right: 24px;
-            padding: 14px 20px;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            padding: 14px 24px;
             border-radius: 8px;
             font-size: 0.9rem;
             font-weight: 500;
-            z-index: 1000;
-            transform: translateY(100px);
+            z-index: 1001;
             opacity: 0;
             transition: all 0.3s;
+            max-width: 90%;
+            text-align: center;
         }
 
-        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
         .toast-success { background: var(--success); color: white; }
         .toast-error { background: var(--danger); color: white; }
 
@@ -393,13 +467,22 @@
             color: var(--text-dim);
         }
 
-        .empty-state .icon { font-size: 3rem; margin-bottom: 16px; }
-        .empty-state p { font-size: 1rem; }
+        .empty-state .icon { font-size: 4rem; margin-bottom: 16px; }
+        .empty-state h3 { font-size: 1.2rem; margin-bottom: 8px; color: var(--text); }
+        .empty-state p { font-size: 0.9rem; }
 
-        @media (max-width: 600px) {
-            .dup-group-body { flex-direction: column; }
-            .img-card { flex: none; width: 100%; }
-            .form-row { flex-direction: column; }
+        /* Desktop */
+        @media (min-width: 768px) {
+            .container { padding: 24px; }
+            header h1 { font-size: 2rem; }
+            header { padding: 40px 0 32px; }
+            .settings-grid { grid-template-columns: repeat(4, 1fr); }
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
+            .dup-images { flex-direction: row; flex-wrap: wrap; }
+            .img-card { flex: 1; min-width: 200px; max-width: 250px; }
+            .action-buttons { grid-template-columns: auto auto; max-width: 400px; }
+            .bottom-nav { display: none; }
+            body { padding-bottom: 0; }
         }
     </style>
 </head>
@@ -407,165 +490,119 @@
     <div class="container">
         <header>
             <h1>Duplicate Photo Detector</h1>
-            <p>Find and remove duplicate images using perceptual hashing</p>
+            <p>Find and remove duplicate photos</p>
         </header>
 
-        <!-- Scanner Panel -->
-        <div class="panel">
-            <h2><span class="icon">&#128193;</span> Scan Directory</h2>
-
-            <!-- Drag & Drop Zone -->
-            <div class="drop-zone" id="dropZone">
-                <div class="drop-icon">&#128247;</div>
-                <div class="drop-text">Drag &amp; drop a folder here</div>
-                <div class="drop-hint">or click to browse</div>
-                <div class="folder-name" id="folderName" style="display:none;"></div>
-                <input type="file" id="folderInput" webkitdirectory multiple>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group" style="flex: 2;">
-                    <label>Target Directory</label>
-                    <input type="text" id="directory" placeholder="C:\Users\Admin\Desktop\New folder\doges">
-                </div>
-                <div class="form-group" style="flex: 0;">
-                    <label>&nbsp;</label>
-                    <button class="btn btn-outline" onclick="browseDirs()">&#128194; Browse</button>
-                </div>
-            </div>
-
-            <div id="dirBrowser" class="dir-browser" style="display:none;"></div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Similarity Threshold</label>
-                    <input type="number" id="threshold" value="10" min="0" max="64">
-                </div>
-                <div class="form-group">
-                    <label>Hash Algorithm</label>
-                    <select id="hashType">
-                        <option value="phash">Perceptual Hash (pHash)</option>
-                        <option value="dhash">Difference Hash (dHash)</option>
-                        <option value="ahash">Average Hash (aHash)</option>
-                        <option value="whash">Wavelet Hash (wHash)</option>
-                    </select>
-                </div>
-            </div>
-
-            <button class="btn btn-primary" id="scanBtn" onclick="startScan()">
-                &#128269; Start Scan
+        <section class="mobile-folder-section">
+            <button class="browse-btn" style="width: 100%; justify-content: center; padding: 20px; font-size: 1.1rem;" onclick="browseDirs()">
+                &#128194; Select Folder to Scan
             </button>
+            <div id="dirBrowser" class="dir-browser">
+                <div class="dir-header" id="dirHeader">Current Path</div>
+                <div class="dir-list" id="dirList"></div>
+            </div>
+            <input type="hidden" id="directory">
+        </section>
+
+        <div class="settings-grid">
+            <div class="setting-card">
+                <label>Similarity</label>
+                <input type="number" id="threshold" value="10" min="0" max="64">
+            </div>
+            <div class="setting-card">
+                <label>Hash Algorithm</label>
+                <select id="hashType">
+                    <option value="phash">pHash</option>
+                    <option value="dhash">dHash</option>
+                    <option value="ahash">aHash</option>
+                    <option value="whash">wHash</option>
+                </select>
+            </div>
         </div>
 
-        <!-- Progress -->
-        <div class="progress-container" id="progressContainer">
-            <div class="panel">
-                <h2><span class="icon">&#9203;</span> Scanning...</h2>
+        <button class="scan-btn" id="scanBtn" onclick="startScan()">
+            <span>&#128269;</span> Start Scan
+        </button>
+
+        <section class="progress-section" id="progressSection">
+            <div class="progress-card">
+                <div class="progress-status">
+                    <span>&#9203;</span>
+                    <span id="progressStatus">Scanning...</span>
+                </div>
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
-                <div class="progress-text">
-                    <span id="progressStatus">Starting...</span>
+                <div class="progress-numbers">
+                    <span id="progressFiles">0 / 0 files</span>
                     <span id="progressPct">0%</span>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Results -->
-        <div class="results" id="results">
-            <div class="stats" id="stats"></div>
+        <section class="results" id="results">
+            <div class="stats-grid" id="stats"></div>
 
-            <div class="actions-bar">
-                <button class="btn btn-danger" onclick="deleteDuplicates()">&#128465; Delete Duplicates</button>
-                <button class="btn btn-outline" onclick="moveDuplicates()">&#128193; Move to Folder</button>
+            <div class="action-buttons">
+                <button class="action-btn delete" onclick="deleteDuplicates()">
+                    &#128465; Delete All
+                </button>
+                <button class="action-btn move" onclick="moveDuplicates()">
+                    &#128193; Move All
+                </button>
             </div>
 
             <div id="groups"></div>
-        </div>
+        </section>
 
-        <!-- Empty state -->
         <div class="empty-state" id="emptyState">
             <div class="icon">&#128247;</div>
-            <p>Select a directory and click Start Scan to find duplicates</p>
+            <h3>Ready to Scan</h3>
+            <p>Enter a folder path and tap Start Scan</p>
         </div>
     </div>
 
-    <!-- Toast -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="scrollToTop()">
+            <span class="icon">&#128269;</span>
+            <span>Scan</span>
+        </div>
+        <div class="nav-item" onclick="scrollToResults()">
+            <span class="icon">&#128202;</span>
+            <span>Results</span>
+        </div>
+    </nav>
+
     <div class="toast" id="toast"></div>
 
     <script>
         let currentScanId = null;
         let currentPath = '';
-        let droppedFolderPath = null;
+        let browserRoot = '';
 
-        // Drag & Drop folder selection
-        const dropZone = document.getElementById('dropZone');
-        const folderInput = document.getElementById('folderInput');
-        const folderNameEl = document.getElementById('folderName');
-
-        // Click to browse files
-        dropZone.addEventListener('click', (e) => {
-            if (e.target !== folderInput) folderInput.click();
-        });
-
-        folderInput.addEventListener('change', (e) => {
-            const files = e.target.files;
-            if (files.length > 0) {
-                // Extract the root folder path from the first file
-                const fullPath = files[0].webkitRelativePath;
-                const rootFolder = fullPath.split('/')[0];
-                // We can't get the real filesystem path from webkitdirectory,
-                // so we prompt the user to enter it manually or use Browse
-                showToast(`Folder "${rootFolder}" selected. Please enter the full path below or use Browse.`, 'success');
-                folderNameEl.textContent = `Selected: ${rootFolder} (${files.length} files)`;
-                folderNameEl.style.display = 'block';
-                dropZone.classList.add('has-folder');
-            }
-        });
-
-        // Native drag & drop events on the drop zone
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('drag-over');
-        });
-
-        dropZone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('drag-over');
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('drag-over');
-
-            const items = e.dataTransfer.items;
-            if (items) {
-                for (let i = 0; i < items.length; i++) {
-                    const entry = items[i].webkitGetAsEntry ? items[i].webkitGetAsEntry() : null;
-                    if (entry && entry.isDirectory) {
-                        // Browser security prevents reading the full filesystem path
-                        // We show a message and focus the directory input
-                        folderNameEl.textContent = `Dropped folder: "${entry.name}". Please enter the full path below or use Browse.`;
-                        folderNameEl.style.display = 'block';
-                        dropZone.classList.add('has-folder');
-                        document.getElementById('directory').focus();
-                        showToast(`"${entry.name}" dropped! Enter its full path below.`, 'success');
-                        return;
-                    }
-                }
-            }
-
-            // Fallback: check for files
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                showToast('Please drop a folder, not individual files.', 'error');
-            }
-        });
-
-        // Directory browser
         async function browseDirs() {
             const browser = document.getElementById('dirBrowser');
-            browser.style.display = 'block';
+            const dirList = document.getElementById('dirList');
+            const dirHeader = document.getElementById('dirHeader');
+
+            if (browser.classList.contains('active') && currentPath === browserRoot) {
+                browser.classList.remove('active');
+                return;
+            }
+
+            if (!currentPath) {
+                const resp = await fetch('/api/browse', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: '' })
+                });
+                const data = await resp.json();
+                currentPath = data.dirs && data.dirs[0]?.path || '';
+                browserRoot = currentPath;
+            }
+
+            browser.classList.add('active');
+            dirHeader.textContent = currentPath || 'Select a folder';
 
             const resp = await fetch('/api/browse', {
                 method: 'POST',
@@ -575,36 +612,51 @@
             const data = await resp.json();
 
             if (data.error) {
-                browser.innerHTML = `<div class="dir-path" style="color:var(--danger)">${data.error}</div>`;
+                dirList.innerHTML = `<div class="dir-item" style="color:var(--danger)">${data.error}</div>`;
                 return;
             }
 
-            currentPath = data.current || '';
-            let html = `<div class="dir-path">&#128193; ${currentPath}</div>`;
+            let html = '';
 
-            if (currentPath) {
-                const parent = currentPath.split('\\').slice(0, -1).join('\\') || currentPath.split('/').slice(0, -1).join('/');
+            if (currentPath && currentPath !== browserRoot) {
+                const parent = currentPath.includes('\\') 
+                    ? currentPath.split('\\').slice(0, -1).join('\\')
+                    : currentPath.split('/').slice(0, -1).join('/');
                 if (parent) {
-                    html += `<div class="dir-item" onclick="selectDir('${parent.replace(/\\/g, '\\\\')}')">&#8617; ..</div>`;
+                    html += `<div class="dir-item back" onclick="navigateTo('${parent.replace(/\\/g, '\\\\')}')">&#8617; Back</div>`;
                 }
             }
 
             for (const dir of data.dirs) {
                 const path = typeof dir === 'string' ? dir : dir.path;
                 const name = typeof dir === 'string' ? path.split(/[\\/]/).pop() : dir.name;
-                html += `<div class="dir-item" onclick="selectDir('${path.replace(/\\/g, '\\\\')}')">&#128193; ${name}</div>`;
+                html += `<div class="dir-item" onclick="navigateTo('${path.replace(/\\/g, '\\\\')}')">
+                    &#128194; ${name}
+                </div>`;
             }
 
-            browser.innerHTML = html;
+            if (!data.dirs || data.dirs.length === 0) {
+                html = `<div class="dir-item" onclick="selectCurrentDir()" style="color:var(--success); font-weight:600;">
+                    &#10003; Use This Folder
+                </div>`;
+            }
+
+            dirList.innerHTML = html;
         }
 
-        function selectDir(path) {
+        function navigateTo(path) {
             document.getElementById('directory').value = path;
             currentPath = path;
             browseDirs();
         }
 
-        // Start scan
+        function selectCurrentDir() {
+            if (currentPath) {
+                document.getElementById('directory').value = currentPath;
+                document.getElementById('dirBrowser').classList.remove('active');
+            }
+        }
+
         async function startScan() {
             const directory = document.getElementById('directory').value.trim();
             if (!directory) { showToast('Please select a directory', 'error'); return; }
@@ -613,9 +665,11 @@
             const hashType = document.getElementById('hashType').value;
 
             document.getElementById('scanBtn').disabled = true;
-            document.getElementById('progressContainer').classList.add('active');
+            document.getElementById('scanBtn').innerHTML = '<span>&#9203;</span> Scanning...';
+            document.getElementById('progressSection').classList.add('active');
             document.getElementById('results').classList.remove('active');
             document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('dirBrowser').classList.remove('active');
 
             try {
                 const resp = await fetch('/api/scan', {
@@ -647,8 +701,9 @@
 
                 document.getElementById('progressFill').style.width = data.progress.pct + '%';
                 document.getElementById('progressPct').textContent = data.progress.pct + '%';
-                document.getElementById('progressStatus').textContent =
-                    `${data.progress.status}... (${data.progress.current}/${data.progress.total})`;
+                document.getElementById('progressFiles').textContent = 
+                    `${data.progress.current} / ${data.progress.total} files`;
+                document.getElementById('progressStatus').textContent = capitalize(data.progress.status) + '...';
 
                 if (data.done) {
                     loadResults();
@@ -663,46 +718,56 @@
             const resp = await fetch(`/api/results/${currentScanId}`);
             const data = await resp.json();
 
-            document.getElementById('progressContainer').classList.remove('active');
-            document.getElementById('scanBtn').disabled = false;
+            resetUI();
+            document.getElementById('progressSection').classList.remove('active');
 
             if (data.total_groups === 0) {
                 document.getElementById('emptyState').style.display = 'block';
                 document.getElementById('emptyState').innerHTML = `
                     <div class="icon">&#9989;</div>
-                    <p>No duplicates found! Your photos are clean.</p>`;
+                    <h3>No Duplicates Found</h3>
+                    <p>Your photos are clean!</p>`;
                 return;
             }
 
-            // Stats
-            const spaceMB = (data.total_space / (1024 * 1024)).toFixed(2);
+            const spaceMB = (data.total_space / (1024 * 1024)).toFixed(1);
             document.getElementById('stats').innerHTML = `
-                <div class="stat-card"><div class="value">${data.total_groups}</div><div class="label">Duplicate Groups</div></div>
-                <div class="stat-card"><div class="value">${data.total_duplicates}</div><div class="label">Duplicates Found</div></div>
-                <div class="stat-card"><div class="value">${spaceMB} MB</div><div class="label">Recoverable Space</div></div>`;
+                <div class="stat-card">
+                    <div class="value">${data.total_groups}</div>
+                    <div class="label">Groups</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value">${data.total_duplicates}</div>
+                    <div class="label">Duplicates</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value">${spaceMB} MB</div>
+                    <div class="label">Space</div>
+                </div>`;
 
-            // Groups
             let html = '';
             data.groups.forEach((g, i) => {
                 const badge = g.type === 'exact'
-                    ? '<span class="badge badge-exact">Exact Match</span>'
-                    : '<span class="badge badge-near">Near Duplicate</span>';
+                    ? '<span class="badge badge-exact">Exact</span>'
+                    : '<span class="badge badge-near">Near</span>';
 
                 html += `
                 <div class="dup-group">
                     <div class="dup-group-header">
-                        <span>Group ${i + 1} &mdash; ${g.duplicates.length + 1} similar images</span>
+                        <span class="group-info">Group ${i + 1} &bull; ${g.duplicates.length + 1} photos</span>
                         ${badge}
                     </div>
-                    <div class="dup-group-body">
+                    <div class="dup-images">
                         <div class="img-card">
                             ${g.keeper_info.thumb
                                 ? `<img src="data:image/jpeg;base64,${g.keeper_info.thumb}">`
                                 : `<div class="no-img">&#127748;</div>`}
-                            <span class="tag tag-keep">Keep</span>
-                            <div class="info">
-                                <div class="name" title="${g.keeper_info.name}">${g.keeper_info.name}</div>
-                                <div class="meta">${(g.keeper_info.size / 1024).toFixed(0)} KB &bull; ${g.keeper_info.width}x${g.keeper_info.height}</div>
+                            <div class="card-body">
+                                <div class="card-header">
+                                    <span class="tag tag-keep">Keep</span>
+                                </div>
+                                <div class="img-name" title="${g.keeper_info.name}">${g.keeper_info.name}</div>
+                                <div class="img-meta">${(g.keeper_info.size / 1024).toFixed(0)} KB &bull; ${g.keeper_info.width}x${g.keeper_info.height}</div>
                             </div>
                         </div>`;
 
@@ -712,10 +777,12 @@
                             ${d.thumb
                                 ? `<img src="data:image/jpeg;base64,${d.thumb}">`
                                 : `<div class="no-img">&#127748;</div>`}
-                            <span class="tag tag-dup">Duplicate</span>
-                            <div class="info">
-                                <div class="name" title="${d.name}">${d.name}</div>
-                                <div class="meta">${(d.size / 1024).toFixed(0)} KB &bull; ${d.width}x${d.height}</div>
+                            <div class="card-body">
+                                <div class="card-header">
+                                    <span class="tag tag-dup">Duplicate</span>
+                                </div>
+                                <div class="img-name" title="${d.name}">${d.name}</div>
+                                <div class="img-meta">${(d.size / 1024).toFixed(0)} KB &bull; ${d.width}x${d.height}</div>
                             </div>
                         </div>`;
                 });
@@ -725,6 +792,7 @@
 
             document.getElementById('groups').innerHTML = html;
             document.getElementById('results').classList.add('active');
+            document.querySelector('.nav-item:last-child').classList.add('active');
         }
 
         async function deleteDuplicates() {
@@ -750,15 +818,13 @@
             }
 
             const count = action === 'delete' ? data.deleted.length : data.moved.length;
-            showToast(`${count} duplicates ${action === 'delete' ? 'deleted' : 'moved'} successfully`, 'success');
-
-            // Refresh results
+            showToast(`${count} duplicates ${action === 'delete' ? 'deleted' : 'moved'}`, 'success');
             loadResults();
         }
 
         function resetUI() {
-            document.getElementById('progressContainer').classList.remove('active');
             document.getElementById('scanBtn').disabled = false;
+            document.getElementById('scanBtn').innerHTML = '<span>&#128269;</span> Start Scan';
         }
 
         function showToast(msg, type) {
@@ -766,6 +832,26 @@
             toast.textContent = msg;
             toast.className = `toast toast-${type} show`;
             setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function capitalize(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            document.querySelector('.nav-item:first-child').classList.add('active');
+            document.querySelector('.nav-item:last-child').classList.remove('active');
+        }
+
+        function scrollToResults() {
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+            document.querySelector('.nav-item:last-child').classList.add('active');
+            document.querySelector('.nav-item:first-child').classList.remove('active');
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
         }
     </script>
 </body>

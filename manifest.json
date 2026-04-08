@@ -1,0 +1,30 @@
+{
+  "name": "Duplicate Photo Detector",
+  "short_name": "DupDetector",
+  "description": "Find and remove duplicate photos using perceptual hashing",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#6c5ce7",
+  "orientation": "portrait-primary",
+  "categories": ["utilities", "photo"],
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "share_target": {
+    "action": "/",
+    "method": "GET"
+  }
+}

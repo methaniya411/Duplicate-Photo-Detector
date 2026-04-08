@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
 Duplicate Photo Detector - Web Frontend
-========================================
+=======================================
 A Flask-based web UI for scanning directories and managing duplicate photos.
+Mobile-ready PWA with offline support.
 
 Usage:
-    python app.py              # Starts server on http://localhost:5000
+    python app.py              # Starts server on http://0.0.0.0:5000
     python app.py --port 8080  # Custom port
 """
 
@@ -24,11 +25,10 @@ from flask import Flask, jsonify, render_template, request, send_from_directory
 from PIL import Image
 import imagehash
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static")
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"}
 
-# In-memory scan results keyed by scan_id
 scan_results: dict = {}
 
 
@@ -57,11 +57,10 @@ def get_image_quality(filepath: str):
         return (0, 0, 0)
 
 
-def get_image_thumbnail(filepath: str):
-    """Generate a base64 thumbnail for display in the UI."""
+def get_image_thumbnail(filepath: str, size=(200, 200)):
     try:
         with Image.open(filepath) as img:
-            img.thumbnail((200, 200))
+            img.thumbnail(size)
             import io
             import base64
             buf = io.BytesIO()
@@ -84,7 +83,6 @@ def collect_image_files(root_dir: str):
 
 
 def find_duplicates(root_dir: str, threshold: int = 10, hash_type: str = "phash", progress=None):
-    """Find duplicate groups and return structured results."""
     image_files = collect_image_files(root_dir)
     total = len(image_files)
 
@@ -95,7 +93,6 @@ def find_duplicates(root_dir: str, threshold: int = 10, hash_type: str = "phash"
     if not image_files:
         return []
 
-    # Exact hash grouping
     exact_groups = defaultdict(list)
     for i, filepath in enumerate(image_files):
         try:
@@ -117,7 +114,6 @@ def find_duplicates(root_dir: str, threshold: int = 10, hash_type: str = "phash"
             duplicate_groups.append({"keeper": keeper, "duplicates": dupes, "type": "exact"})
             exact_duplicate_files.update(files)
 
-    # Perceptual hash for remaining files
     unique_files = [f for f in image_files if f not in exact_duplicate_files]
 
     if progress:
@@ -132,7 +128,6 @@ def find_duplicates(root_dir: str, threshold: int = 10, hash_type: str = "phash"
             progress["current"] = len(exact_groups) + i + 1
             progress["pct"] = round(30 + (i + 1) / max(len(unique_files), 1) * 40)
 
-    # Union-find for near-duplicates
     parent = {fp: fp for fp, _ in perceptual_hashes}
 
     def find(x):
@@ -182,6 +177,16 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/manifest.json")
+def manifest():
+    return send_from_directory(".", "manifest.json")
+
+
+@app.route("/sw.js")
+def service_worker():
+    return send_from_directory(".", "sw.js")
+
+
 @app.route("/api/scan", methods=["POST"])
 def api_scan():
     data = request.json
@@ -198,7 +203,6 @@ def api_scan():
 
     def run_scan():
         groups = find_duplicates(directory, threshold, hash_type, progress)
-        # Enrich with thumbnails and quality info
         for group in groups:
             keeper = group["keeper"]
             kq = get_image_quality(keeper)
@@ -263,7 +267,7 @@ def api_results(scan_id):
 def api_action():
     data = request.json
     scan_id = data.get("scan_id", "")
-    action = data.get("action", "")  # delete, move
+    action = data.get("action", "")
     move_dir = data.get("move_dir", "./duplicates")
 
     if scan_id not in scan_results:
@@ -285,7 +289,6 @@ def api_action():
                 elif action == "move":
                     os.makedirs(move_dir, exist_ok=True)
                     dest = os.path.join(move_dir, os.path.basename(filepath))
-                    # Handle name collisions
                     base, ext = os.path.splitext(dest)
                     counter = 1
                     while os.path.exists(dest):
@@ -301,11 +304,9 @@ def api_action():
 
 @app.route("/api/browse", methods=["POST"])
 def api_browse():
-    """List subdirectories for directory picker."""
     data = request.json
     path = data.get("path", "")
     if not path or not os.path.isdir(path):
-        # Return common directories
         if os.name == "nt":
             dirs = [
                 os.path.expanduser("~\\Pictures"),
@@ -330,12 +331,13 @@ def api_browse():
 
 def main():
     parser = argparse.ArgumentParser(description="Duplicate Photo Detector - Web UI")
-    parser.add_argument("--port", type=int, default=5000, help="Port to run on (default: 5000)")
-    parser.add_argument("--host", default="127.0.0.1", help="Host to bind to (default: 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 5000)), help="Port to run on")
+    parser.add_argument("--host", default="0.0.0.0", help="Host to bind to (default: 0.0.0.0)")
     args = parser.parse_args()
 
     print(f"\n  Duplicate Photo Detector - Web UI")
-    print(f"  Open http://{args.host}:{args.port} in your browser\n")
+    print(f"  Open http://localhost:{args.port} in your browser")
+    print(f"  Or from phone on same WiFi: http://<YOUR_PC_IP>:{args.port}\n")
     app.run(host=args.host, port=args.port, debug=False)
 
 
