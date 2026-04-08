@@ -172,6 +172,93 @@ def find_duplicates(root_dir: str, threshold: int = 10, hash_type: str = "phash"
     return duplicate_groups
 
 
+def find_duplicates_from_files(image_files: list, threshold: int = 10, hash_type: str = "phash", progress=None):
+    total = len(image_files)
+
+    if progress:
+        progress["total"] = total
+        progress["status"] = "scanning"
+
+    if not image_files:
+        return []
+
+    exact_groups = defaultdict(list)
+    for i, filepath in enumerate(image_files):
+        try:
+            file_hash = hashlib.md5(Path(filepath).read_bytes()).hexdigest()
+            exact_groups[file_hash].append(filepath)
+        except Exception:
+            pass
+        if progress:
+            progress["current"] = i + 1
+            progress["pct"] = round((i + 1) / total * 30)
+
+    duplicate_groups = []
+    exact_duplicate_files = set()
+
+    for md5_hash, files in exact_groups.items():
+        if len(files) > 1:
+            keeper = max(files, key=get_image_quality)
+            dupes = [f for f in files if f != keeper]
+            duplicate_groups.append({"keeper": keeper, "duplicates": dupes, "type": "exact"})
+            exact_duplicate_files.update(files)
+
+    unique_files = [f for f in image_files if f not in exact_duplicate_files]
+
+    if progress:
+        progress["status"] = "hashing"
+
+    perceptual_hashes = []
+    for i, filepath in enumerate(unique_files):
+        phash = compute_perceptual_hash(filepath, hash_type)
+        if phash is not None:
+            perceptual_hashes.append((filepath, phash))
+        if progress:
+            progress["current"] = len(exact_groups) + i + 1
+            progress["pct"] = round(30 + (i + 1) / max(len(unique_files), 1) * 40)
+
+    parent = {fp: fp for fp, _ in perceptual_hashes}
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(x, y):
+        px, py = find(x), find(y)
+        if px != py:
+            parent[px] = py
+
+    ph_count = len(perceptual_hashes)
+    for i in range(ph_count):
+        for j in range(i + 1, ph_count):
+            fp_a, hash_a = perceptual_hashes[i]
+            fp_b, hash_b = perceptual_hashes[j]
+            if find(fp_a) == find(fp_b):
+                continue
+            if (hash_a - hash_b) <= threshold:
+                union(fp_a, fp_b)
+        if progress:
+            progress["pct"] = round(70 + (i + 1) / max(ph_count, 1) * 20)
+
+    groups = defaultdict(list)
+    for fp, _ in perceptual_hashes:
+        groups[find(fp)].append(fp)
+
+    for group_files in groups.values():
+        if len(group_files) > 1:
+            keeper = max(group_files, key=get_image_quality)
+            dupes = [f for f in group_files if f != keeper]
+            duplicate_groups.append({"keeper": keeper, "duplicates": dupes, "type": "near-duplicate"})
+
+    if progress:
+        progress["pct"] = 100
+        progress["status"] = "done"
+
+    return duplicate_groups
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -203,6 +290,70 @@ def api_scan():
 
     def run_scan():
         groups = find_duplicates(directory, threshold, hash_type, progress)
+        for group in groups:
+            keeper = group["keeper"]
+            kq = get_image_quality(keeper)
+            group["keeper_info"] = {
+                "path": keeper,
+                "name": os.path.basename(keeper),
+                "size": kq[0],
+                "width": kq[1],
+                "height": kq[2],
+                "thumb": get_image_thumbnail(keeper),
+            }
+            group["duplicates_info"] = []
+            for d in group["duplicates"]:
+                dq = get_image_quality(d)
+                group["duplicates_info"].append({
+                    "path": d,
+                    "name": os.path.basename(d),
+                    "size": dq[0],
+                    "width": dq[1],
+                    "height": dq[2],
+                    "thumb": get_image_thumbnail(d),
+                })
+        scan_results[scan_id]["groups"] = groups
+        scan_results[scan_id]["done"] = True
+
+    threading.Thread(target=run_scan, daemon=True).start()
+    return jsonify({"scan_id": scan_id})
+
+
+@app.route("/api/upload-scan", methods=["POST"])
+def api_upload_scan():
+    if "photos" not in request.files:
+        return jsonify({"error": "No photos uploaded"}), 400
+
+    files = request.files.getlist("photos")
+    if not files or len(files) == 0:
+        return jsonify({"error": "No photos uploaded"}), 400
+
+    threshold = int(request.form.get("threshold", 10))
+    hash_type = request.form.get("hash_type", "phash")
+
+    upload_id = str(uuid.uuid4())
+    upload_dir = os.path.join("uploads", upload_id)
+    os.makedirs(upload_dir, exist_ok=True)
+
+    saved_files = []
+    for f in files:
+        if f.filename:
+            ext = os.path.splitext(f.filename)[1].lower()
+            if ext in IMAGE_EXTENSIONS or f.content_type.startswith("image/"):
+                filepath = os.path.join(upload_dir, f.filename)
+                f.save(filepath)
+                saved_files.append(filepath)
+
+    if len(saved_files) < 2:
+        shutil.rmtree(upload_dir, ignore_errors=True)
+        return jsonify({"error": "Need at least 2 photos to find duplicates"}), 400
+
+    scan_id = str(uuid.uuid4())
+    progress = {"total": len(saved_files), "current": 0, "pct": 0, "status": "scanning"}
+    scan_results[scan_id] = {"progress": progress, "groups": None, "done": False, "upload_dir": upload_dir}
+
+    def run_scan():
+        groups = find_duplicates_from_files(saved_files, threshold, hash_type, progress)
         for group in groups:
             keeper = group["keeper"]
             kq = get_image_quality(keeper)

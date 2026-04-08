@@ -57,44 +57,36 @@
 
         header p { color: var(--text-dim); font-size: 0.85rem; }
 
-        /* Mobile Folder Picker */
-        .mobile-folder-section { margin-bottom: 20px; }
+        /* Upload Section */
+        .upload-section { margin-bottom: 20px; }
 
-        .folder-input-group {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-
-        .folder-input-group input {
-            flex: 1;
-            padding: 14px 16px;
-            background: var(--surface2);
-            border: 1px solid var(--border);
+        .upload-btn {
+            width: 100%;
+            padding: 24px;
+            background: var(--surface);
+            border: 2px dashed var(--accent);
             border-radius: var(--radius);
-            color: var(--text);
-            font-size: 1rem;
-            outline: none;
-        }
-
-        .folder-input-group input:focus { border-color: var(--accent); }
-        .folder-input-group input::placeholder { color: var(--text-dim); }
-
-        .browse-btn {
-            padding: 14px 20px;
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            color: var(--text);
-            font-size: 1rem;
+            color: var(--accent);
+            font-size: 1.1rem;
+            font-weight: 600;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 6px;
-            white-space: nowrap;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.2s;
         }
 
-        .browse-btn:active { background: var(--surface); }
+        .upload-btn:active { background: rgba(108, 92, 231, 0.1); transform: scale(0.98); }
+
+        .upload-info {
+            text-align: center;
+            padding: 12px;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        .upload-info.has-files { color: var(--success); }
 
         /* Mobile Directory Browser */
         .dir-browser {
@@ -493,15 +485,14 @@
             <p>Find and remove duplicate photos</p>
         </header>
 
-        <section class="mobile-folder-section">
-            <button class="browse-btn" style="width: 100%; justify-content: center; padding: 20px; font-size: 1.1rem;" onclick="browseDirs()">
-                &#128194; Select Folder to Scan
+        <section class="upload-section">
+            <button class="upload-btn" onclick="selectPhotos()">
+                &#128247; Select Photos from Phone
             </button>
-            <div id="dirBrowser" class="dir-browser">
-                <div class="dir-header" id="dirHeader">Current Path</div>
-                <div class="dir-list" id="dirList"></div>
+            <input type="file" id="photoInput" multiple accept="image/*" style="display:none;" onchange="handlePhotos(this.files)">
+            <div class="upload-info" id="uploadInfo">
+                <span id="selectedCount">No photos selected</span>
             </div>
-            <input type="hidden" id="directory">
         </section>
 
         <div class="settings-grid">
@@ -558,7 +549,7 @@
         <div class="empty-state" id="emptyState">
             <div class="icon">&#128247;</div>
             <h3>Ready to Scan</h3>
-            <p>Enter a folder path and tap Start Scan</p>
+            <p>Select photos from your phone and tap Start Scan</p>
         </div>
     </div>
 
@@ -577,116 +568,65 @@
 
     <script>
         let currentScanId = null;
-        let currentPath = '';
-        let browserRoot = '';
+        let selectedFiles = [];
+        let uploadSessionId = null;
 
-        async function browseDirs() {
-            const browser = document.getElementById('dirBrowser');
-            const dirList = document.getElementById('dirList');
-            const dirHeader = document.getElementById('dirHeader');
-
-            if (browser.classList.contains('active') && currentPath === browserRoot) {
-                browser.classList.remove('active');
-                return;
-            }
-
-            if (!currentPath) {
-                const resp = await fetch('/api/browse', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: '' })
-                });
-                const data = await resp.json();
-                currentPath = data.dirs && data.dirs[0]?.path || '';
-                browserRoot = currentPath;
-            }
-
-            browser.classList.add('active');
-            dirHeader.textContent = currentPath || 'Select a folder';
-
-            const resp = await fetch('/api/browse', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ path: currentPath })
-            });
-            const data = await resp.json();
-
-            if (data.error) {
-                dirList.innerHTML = `<div class="dir-item" style="color:var(--danger)">${data.error}</div>`;
-                return;
-            }
-
-            let html = '';
-
-            if (currentPath && currentPath !== browserRoot) {
-                const parent = currentPath.includes('\\') 
-                    ? currentPath.split('\\').slice(0, -1).join('\\')
-                    : currentPath.split('/').slice(0, -1).join('/');
-                if (parent) {
-                    html += `<div class="dir-item back" onclick="navigateTo('${parent.replace(/\\/g, '\\\\')}')">&#8617; Back</div>`;
-                }
-            }
-
-            for (const dir of data.dirs) {
-                const path = typeof dir === 'string' ? dir : dir.path;
-                const name = typeof dir === 'string' ? path.split(/[\\/]/).pop() : dir.name;
-                html += `<div class="dir-item" onclick="navigateTo('${path.replace(/\\/g, '\\\\')}')">
-                    &#128194; ${name}
-                </div>`;
-            }
-
-            if (!data.dirs || data.dirs.length === 0) {
-                html = `<div class="dir-item" onclick="selectCurrentDir()" style="color:var(--success); font-weight:600;">
-                    &#10003; Use This Folder
-                </div>`;
-            }
-
-            dirList.innerHTML = html;
+        function selectPhotos() {
+            document.getElementById('photoInput').click();
         }
 
-        function navigateTo(path) {
-            document.getElementById('directory').value = path;
-            currentPath = path;
-            browseDirs();
-        }
-
-        function selectCurrentDir() {
-            if (currentPath) {
-                document.getElementById('directory').value = currentPath;
-                document.getElementById('dirBrowser').classList.remove('active');
+        function handlePhotos(files) {
+            selectedFiles = Array.from(files);
+            const count = selectedFiles.length;
+            const uploadInfo = document.getElementById('uploadInfo');
+            
+            if (count > 0) {
+                uploadInfo.textContent = `${count} photo${count > 1 ? 's' : ''} selected`;
+                uploadInfo.classList.add('has-files');
+                showToast(`${count} photos ready to scan`, 'success');
+            } else {
+                uploadInfo.textContent = 'No photos selected';
+                uploadInfo.classList.remove('has-files');
             }
         }
 
         async function startScan() {
-            const directory = document.getElementById('directory').value.trim();
-            if (!directory) { showToast('Please select a directory', 'error'); return; }
+            if (selectedFiles.length === 0) { 
+                showToast('Please select photos first', 'error'); 
+                return; 
+            }
 
             const threshold = parseInt(document.getElementById('threshold').value) || 10;
             const hashType = document.getElementById('hashType').value;
 
             document.getElementById('scanBtn').disabled = true;
-            document.getElementById('scanBtn').innerHTML = '<span>&#9203;</span> Scanning...';
+            document.getElementById('scanBtn').innerHTML = '<span>&#9203;</span> Uploading...';
             document.getElementById('progressSection').classList.add('active');
             document.getElementById('results').classList.remove('active');
             document.getElementById('emptyState').style.display = 'none';
-            document.getElementById('dirBrowser').classList.remove('active');
 
             try {
-                const resp = await fetch('/api/scan', {
+                const formData = new FormData();
+                selectedFiles.forEach((file, i) => {
+                    formData.append('photos', file);
+                });
+                formData.append('threshold', threshold);
+                formData.append('hash_type', hashType);
+
+                const resp = await fetch('/api/upload-scan', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ directory, threshold, hash_type: hashType })
+                    body: formData
                 });
 
                 if (!resp.ok) {
                     const err = await resp.json();
-                    showToast(err.error || 'Scan failed', 'error');
+                    showToast(err.error || 'Upload failed', 'error');
                     resetUI();
                     return;
                 }
 
                 const data = await resp.json();
-                currentScanId = data.scan_id;
+                uploadSessionId = data.scan_id;
                 pollProgress();
             } catch (e) {
                 showToast('Connection error: ' + e.message, 'error');
@@ -696,7 +636,8 @@
 
         async function pollProgress() {
             const poll = async () => {
-                const resp = await fetch(`/api/progress/${currentScanId}`);
+                const scanId = uploadSessionId || currentScanId;
+                const resp = await fetch(`/api/progress/${scanId}`);
                 const data = await resp.json();
 
                 document.getElementById('progressFill').style.width = data.progress.pct + '%';
@@ -715,7 +656,8 @@
         }
 
         async function loadResults() {
-            const resp = await fetch(`/api/results/${currentScanId}`);
+            const scanId = uploadSessionId || currentScanId;
+            const resp = await fetch(`/api/results/${scanId}`);
             const data = await resp.json();
 
             resetUI();
