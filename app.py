@@ -450,29 +450,30 @@ def api_action():
     for group in groups:
         for dupe_info in group["duplicates_info"]:
             filepath = dupe_info["path"]
-            print(f"Trying to {action}: {filepath}")
+            # Use absolute path to be 100% sure
+            abs_path = os.path.abspath(filepath)
             try:
-                if not os.path.exists(filepath):
-                    print(f"File not found: {filepath}")
-                    results["errors"].append({"file": dupe_info["name"], "error": "File not found"})
+                if not os.path.exists(abs_path):
+                    print(f"File not found on disk: {abs_path}")
+                    results["errors"].append({"file": dupe_info["name"], "error": "File not found on server"})
                     continue
                     
                 if action == "delete":
-                    os.remove(filepath)
-                    print(f"Deleted: {filepath}")
+                    os.remove(abs_path)
+                    print(f"Successfully deleted: {abs_path}")
                     results["deleted"].append(dupe_info["name"])
                 elif action == "move":
                     os.makedirs(move_dir, exist_ok=True)
-                    dest = os.path.join(move_dir, os.path.basename(filepath))
+                    dest = os.path.join(os.path.abspath(move_dir), os.path.basename(filepath))
                     base, ext = os.path.splitext(dest)
                     counter = 1
                     while os.path.exists(dest):
                         dest = f"{base}_{counter}{ext}"
                         counter += 1
-                    shutil.move(filepath, dest)
+                    shutil.move(abs_path, dest)
                     results["moved"].append({"from": dupe_info["name"], "to": dest})
             except Exception as e:
-                print(f"Error: {filepath} - {str(e)}")
+                print(f"Critical error deleting {abs_path}: {str(e)}")
                 results["errors"].append({"file": dupe_info["name"], "error": str(e)})
 
     print(f"Results: {results}")
