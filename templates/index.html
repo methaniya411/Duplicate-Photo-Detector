@@ -769,23 +769,31 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ scan_id: scanId, action })
             });
-            const data = await resp.json();
+            const result = await resp.json();
 
-            if (data.error) {
-                showToast(data.error + (data.scan_ids ? ` Available: ${data.scan_ids.length}` : ''), 'error');
+            if (result.error) {
+                showToast(result.error, 'error');
                 return;
             }
 
             let message = '';
             if (action === 'delete') {
-                message = `${data.deleted.length} deleted, ${data.errors.length} failed`;
+                message = `${result.deleted.length} deleted`;
             } else {
-                message = `${data.moved.length} moved, ${data.errors.length} failed`;
+                message = `${result.moved.length} moved`;
             }
-            showToast(message, data.errors.length > 0 ? 'error' : 'success');
             
-            if (data.errors.length > 0) {
-                console.log('Errors:', data.errors);
+            if (result.errors.length > 0) {
+                message += `, ${result.errors.length} failed`;
+            }
+            
+            showToast(message, result.errors.length > 0 ? 'error' : 'success');
+            
+            if (result.deleted.length > 0 || result.moved.length > 0) {
+                uploadSessionId = null;
+                selectedFiles = [];
+                document.getElementById('uploadInfo').textContent = 'No photos selected';
+                document.getElementById('uploadInfo').classList.remove('has-files');
             }
             
             loadResults();

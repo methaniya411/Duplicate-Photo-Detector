@@ -434,7 +434,11 @@ def api_action():
 
     if scan_id not in scan_results:
         print(f"Scan not found: {scan_id}")
-        return jsonify({"error": "Scan not found", "scan_ids": list(scan_results.keys())}), 404
+        print(f"Available scans: {list(scan_results.keys())}")
+        return jsonify({
+            "error": "Scan expired. Please scan again.", 
+            "scan_ids": list(scan_results.keys())
+        }), 404
 
     groups = scan_results[scan_id].get("groups", [])
     if not groups:
@@ -450,13 +454,13 @@ def api_action():
             try:
                 if not os.path.exists(filepath):
                     print(f"File not found: {filepath}")
-                    results["errors"].append({"file": filepath, "error": "File not found"})
+                    results["errors"].append({"file": dupe_info["name"], "error": "File not found"})
                     continue
                     
                 if action == "delete":
                     os.remove(filepath)
                     print(f"Deleted: {filepath}")
-                    results["deleted"].append(filepath)
+                    results["deleted"].append(dupe_info["name"])
                 elif action == "move":
                     os.makedirs(move_dir, exist_ok=True)
                     dest = os.path.join(move_dir, os.path.basename(filepath))
@@ -466,10 +470,10 @@ def api_action():
                         dest = f"{base}_{counter}{ext}"
                         counter += 1
                     shutil.move(filepath, dest)
-                    results["moved"].append({"from": filepath, "to": dest})
+                    results["moved"].append({"from": dupe_info["name"], "to": dest})
             except Exception as e:
                 print(f"Error: {filepath} - {str(e)}")
-                results["errors"].append({"file": filepath, "error": str(e)})
+                results["errors"].append({"file": dupe_info["name"], "error": str(e)})
 
     print(f"Results: {results}")
     return jsonify(results)
