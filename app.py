@@ -61,6 +61,8 @@ def get_image_thumbnail(filepath: str, size=(200, 200)):
     try:
         with Image.open(filepath) as img:
             img.thumbnail(size)
+            if img.mode in ("RGBA", "P", "LA"):
+                img = img.convert("RGB")
             import io
             import base64
             buf = io.BytesIO()
@@ -336,11 +338,18 @@ def api_upload_scan():
     os.makedirs(upload_dir, exist_ok=True)
 
     saved_files = []
+    file_counter = 0
     for f in files:
         if f.filename:
             ext = os.path.splitext(f.filename)[1].lower()
             if ext in IMAGE_EXTENSIONS or f.content_type.startswith("image/"):
-                filepath = os.path.join(upload_dir, f.filename)
+                original_name = f.filename.replace('\\', '/').lstrip('/')
+                name_part = os.path.splitext(original_name)[0]
+                ext_part = ext or '.jpg'
+                file_counter += 1
+                safe_name = f"{file_counter}_{name_part}{ext_part}"
+                filepath = os.path.join(upload_dir, safe_name)
+                os.makedirs(os.path.dirname(filepath), exist_ok=True)
                 f.save(filepath)
                 saved_files.append(filepath)
 

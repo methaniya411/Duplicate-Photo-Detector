@@ -486,12 +486,18 @@
         </header>
 
         <section class="upload-section">
-            <button class="upload-btn" onclick="selectPhotos()">
-                &#128247; Select Photos from Phone
-            </button>
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <button class="upload-btn" onclick="selectFolder()" style="flex:1; padding: 16px; font-size: 1rem;">
+                    &#128194; Select Folder
+                </button>
+                <button class="upload-btn" onclick="selectPhotos()" style="flex:1; padding: 16px; font-size: 1rem;">
+                    &#128247; Select Photos
+                </button>
+            </div>
+            <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;" onchange="handlePhotos(this.files)">
             <input type="file" id="photoInput" multiple accept="image/*" style="display:none;" onchange="handlePhotos(this.files)">
             <div class="upload-info" id="uploadInfo">
-                <span id="selectedCount">No photos selected</span>
+                <span id="selectedCount">No photos or folder selected</span>
             </div>
         </section>
 
@@ -575,17 +581,21 @@
             document.getElementById('photoInput').click();
         }
 
+        function selectFolder() {
+            document.getElementById('folderInput').click();
+        }
+
         function handlePhotos(files) {
             selectedFiles = Array.from(files);
             const count = selectedFiles.length;
             const uploadInfo = document.getElementById('uploadInfo');
             
             if (count > 0) {
-                uploadInfo.textContent = `${count} photo${count > 1 ? 's' : ''} selected`;
+                uploadInfo.textContent = `${count} file${count > 1 ? 's' : ''} selected`;
                 uploadInfo.classList.add('has-files');
-                showToast(`${count} photos ready to scan`, 'success');
+                showToast(`${count} files ready to scan`, 'success');
             } else {
-                uploadInfo.textContent = 'No photos selected';
+                uploadInfo.textContent = 'No selection';
                 uploadInfo.classList.remove('has-files');
             }
         }
@@ -747,10 +757,11 @@
         }
 
         async function doAction(action) {
+            const scanId = uploadSessionId || currentScanId;
             const resp = await fetch('/api/action', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ scan_id: currentScanId, action })
+                body: JSON.stringify({ scan_id: scanId, action })
             });
             const data = await resp.json();
 
