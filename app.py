@@ -28,6 +28,22 @@ import imagehash
 
 app = Flask(__name__, static_folder="static")
 
+@app.errorhandler(400)
+def bad_request(e):
+    return jsonify(error=str(e.description)), 400
+
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify(error="Resource not found"), 404
+
+@app.errorhandler(405)
+def method_not_allowed(e):
+    return jsonify(error="Method not allowed"), 405
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return jsonify(error="Internal server error"), 500
+
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"}
 
 # ── Scan results store with expiration (BUG-09 fix) ──
@@ -329,7 +345,7 @@ def service_worker():
 
 @app.route("/api/scan", methods=["POST"])
 def api_scan():
-    data = request.json
+    data = request.get_json(silent=True) or {}
     directory = data.get("directory", "")
     threshold = int(data.get("threshold", 10))
     hash_type = data.get("hash_type", "phash")
@@ -452,7 +468,7 @@ def api_results(scan_id):
 
 @app.route("/api/action", methods=["POST"])
 def api_action():
-    data = request.json
+    data = request.get_json(silent=True) or {}
     scan_id = data.get("scan_id", "")
     action = data.get("action", "")
     move_dir = data.get("move_dir", "./duplicates")
@@ -505,7 +521,7 @@ def api_action():
 
 @app.route("/api/browse", methods=["POST"])
 def api_browse():
-    data = request.json
+    data = request.get_json(silent=True) or {}
     path = data.get("path", "")
     if not path or not os.path.isdir(path):
         if os.name == "nt":
