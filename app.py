@@ -476,9 +476,24 @@ def api_action():
     if scan_id not in scan_results:
         return jsonify({"error": "Scan expired. Please scan again."}), 404
 
-    groups = scan_results[scan_id].get("groups", [])
+    scan_data = scan_results[scan_id]
+    groups = scan_data.get("groups", [])
     if not groups:
         return jsonify({"error": "No results to act on"}), 400
+
+    upload_dir = scan_data.get("upload_dir")
+    abs_upload_dir = os.path.abspath(upload_dir) if upload_dir else None
+
+    # Security check: Validate move_dir to prevent directory traversal
+    if action == "move":
+        abs_move_dir = os.path.abspath(move_dir)
+        if abs_upload_dir:
+            try:
+                # For uploaded scans, ensure move_dir remains inside upload_dir
+                if os.path.commonpath([abs_move_dir, abs_upload_dir]) != abs_upload_dir:
+                    return jsonify({"error": "Access denied: move directory outside upload boundary"}), 400
+            except ValueError:
+                return jsonify({"error": "Invalid move directory path"}), 400
 
     results = {"deleted": [], "moved": [], "errors": []}
 
@@ -486,6 +501,17 @@ def api_action():
         for dupe_info in group["duplicates_info"]:
             filepath = dupe_info["path"]
             abs_path = os.path.abspath(filepath)
+
+            # Security check: Ensure file is within upload_dir for upload scans
+            if abs_upload_dir:
+                try:
+                    if os.path.commonpath([abs_path, abs_upload_dir]) != abs_upload_dir:
+                        results["errors"].append({"file": dupe_info["name"], "error": "Access denied: file outside upload boundary"})
+                        continue
+                except ValueError:
+                    results["errors"].append({"file": dupe_info["name"], "error": "Invalid file path"})
+                    continue
+
             try:
                 if not os.path.exists(abs_path):
                     results["errors"].append({"file": dupe_info["name"], "error": "File not found"})
@@ -509,7 +535,6 @@ def api_action():
                 results["errors"].append({"file": dupe_info["name"], "error": str(e)})
 
     # BUG-01 fix: Clean up upload directory after action
-    upload_dir = scan_results[scan_id].get("upload_dir")
     if upload_dir and os.path.isdir(upload_dir):
         shutil.rmtree(upload_dir, ignore_errors=True)
 
